@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>RESPONDEN KUISIONER • Progress Bimbingan</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        /* ... semua style sama seperti sebelumnya ... */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2b2d42, #1e2a2e);
+            min-height: 100vh;
+            padding: 1rem;
+            font-family: 'Courier New', 'Comic Neue', monospace;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 1.5rem;
+            padding: 1rem;
+            border: 4px solid #f8c471;
+        }
+        .header { text-align: center; margin-bottom: 1rem; }
+        .judul-utama {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #ffd966;
+            text-shadow: 3px 3px 0 #b45f1b;
+        }
+        .caption-rochman {
+            font-size: 0.8rem;
+            background: #f4a261;
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 30px;
+            margin-top: 0.3rem;
+            font-weight: bold;
+            color: #2c1a0a;
+        }
+        .log-panel {
+            background: #1f2a1c;
+            border-radius: 1rem;
+            margin: 0.8rem 0;
+            padding: 0.5rem;
+            border: 1px solid #f8c471;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .log-panel h3 {
+            color: #ffd966;
+            font-size: 0.8rem;
+            margin-bottom: 0.3rem;
+            text-align: center;
+        }
+        .log-item {
+            background: #2e3b2c;
+            padding: 0.3rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            color: #ffe0a3;
+            margin-bottom: 0.2rem;
+            border-left: 4px solid #f8c471;
+        }
+        .empty-log {
+            background: #2e3b2c;
+            padding: 0.3rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            color: #ffd966;
+            font-weight: bold;
+            text-align: center;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 0.8rem 0;
+            background: #2e3b2c;
+            padding: 0.4rem 0.8rem;
+            border-radius: 30px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-weight: bold;
+            font-size: 0.6rem;
+            background: #1f2a1c;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            color: #ffe0a3;
+        }
+        .badge { width: 0.8rem; height: 0.8rem; border-radius: 4px; margin-right: 3px; }
+        .badge.otw { background-color: #3b82f6; }
+        .badge.just { background-color: #10b981; }
+        .badge.penelitian { background-color: #f59e0b; }
+        .badge.skg { background-color: #ef4444; }
+
+        .grid-team {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .card {
+            background: #fef9e6;
+            border-radius: 1rem;
+            padding: 0.8rem;
+            text-align: center;
+            border: 3px solid #f8c471;
+            box-shadow: 0 4px 0 #a5662a;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            position: relative;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #a5662a; }
+        .card[data-status="SKG"] { border: 3px solid #ffb703; box-shadow: 0 0 0 1px #ffe6a3, 0 4px 0 #b57c1c; }
+
+        .foto {
+            width: 75px;
+            height: 75px;
+            background: #e7cda8;
+            border-radius: 50%;
+            margin: 0 auto 0.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #593d24;
+            border: 3px solid #f5bc70;
+            background-size: cover;
+            background-position: center;
+            cursor: pointer;
+            position: relative;
+        }
+        .zoom-icon {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            backdrop-filter: blur(2px);
+            transition: 0.1s;
+            z-index: 2;
+        }
+        .zoom-icon:hover {
+            transform: scale(1.1);
+            background: rgba(0,0,0,0.7);
+        }
+        .nama {
+            font-size: 1rem;
+            font-weight: 800;
+        }
+        .angkatan { font-size: 0.6rem; color: #7f5e3a; }
+        .status-badge {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.55rem;
+            font-weight: bold;
+            background: #fff0cf;
+            width: fit-content;
+            margin: 0.1rem auto;
+        }
+        .progress-bar-bg {
+            background: #cab9a2;
+            border-radius: 15px;
+            height: 8px;
+            width: 90%;
+            margin: 0.2rem auto;
+            overflow: hidden;
+        }
+        .progress-fill { height: 100%; width: 0%; border-radius: 15px; transition: width 0.3s; }
+        .persen { font-size: 0.55rem; font-weight: bold; background: #d4bfa8; display: inline-block; padding: 0.1rem 0.4rem; border-radius: 20px; margin: 0.1rem auto; }
+        .tanggal-skg {
+            font-size: 0.6rem;
+            background: #f1c40f;
+            color: #2c1a0a;
+            padding: 0.1rem 0.4rem;
+            border-radius: 30px;
+            display: inline-block;
+            width: fit-content;
+            margin: 0.1rem auto;
+        }
+        .instagram-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            font-size: 0.65rem;
+            background: #fef2d6;
+            padding: 0.1rem 0.4rem;
+            border-radius: 40px;
+            width: fit-content;
+            margin: 0.2rem auto;
+        }
+        .instagram-link {
+            color: #ab8a5c;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .btn-update {
+            background: #ab8a5c;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 30px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.6rem;
+            color: white;
+            cursor: pointer;
+            box-shadow: 2px 2px 0 #4d2f14;
+            width: fit-content;
+            margin: 0.2rem auto 0 auto;
+        }
+        .footer {
+            margin-top: 1rem;
+            background: #1f2a1c;
+            padding: 0.4rem;
+            border-radius: 30px;
+            text-align: center;
+            font-size: 0.6rem;
+            color: #ffd966;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .modal-overlay.show { visibility: visible; opacity: 1; }
+        .modal-content {
+            background: #fff9e6;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            border: 4px solid #ffb703;
+            transform: scale(0.8);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        /* Modal khusus SKG (diperlebar) - tanpa foto profil besar */
+        .skg-modal-content {
+            max-width: 1100px;
+            width: 95%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            text-align: left;
+            padding: 1rem;
+        }
+        .skg-foto-area {
+            flex: 0 0 250px;
+            text-align: center;
+        }
+        .skg-foto-perayaan {
+            width: 250px;
+            height: 250px;
+            border-radius: 20px;
+            background-color: #e7cda8;
+            background-size: cover;
+            background-position: center;
+            border: 3px solid #f8c471;
+            margin-bottom: 0.5rem;
+        }
+        .skg-url-input {
+            width: 100%;
+            padding: 6px;
+            border-radius: 30px;
+            border: 1px solid #ab8a5c;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+        .skg-kata-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .skg-kata-label {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #2c1a0a;
+        }
+        .skg-kata-textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 20px;
+            border: 2px solid #ab8a5c;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        .char-counter {
+            font-size: 0.7rem;
+            text-align: right;
+            color: #7f5e3a;
+        }
+        .skg-simpan-btn {
+            background: #ab8a5c;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            width: fit-content;
+            font-size: 0.8rem;
+        }
+        .close-modal-btn {
+            background: #f4a261;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            align-self: flex-start;
+            font-size: 0.8rem;
+        }
+        /* Modal foto khusus (hanya gambar) */
+        .foto-only-modal {
+            max-width: 90vw;
+            max-height: 90vh;
+            background: transparent;
+            box-shadow: none;
+            border: none;
+        }
+        .foto-only-modal img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 20px;
+            border: 4px solid #ffb703;
+            background: #fff9e6;
+        }
+        @media (min-width: 768px) {
+            .skg-foto-area { flex: 0 0 350px; }
+            .skg-foto-perayaan { width: 350px; height: 350px; }
+            .skg-kata-label { font-size: 1.8rem; }
+            .skg-kata-textarea { font-size: 1.4rem; padding: 12px; }
+            .skg-simpan-btn, .close-modal-btn { font-size: 1rem; padding: 8px 16px; }
+            .skg-modal-content { gap: 2rem; padding: 1.5rem; }
+        }
+        @media (max-width: 767px) {
+            .grid-team { grid-template-columns: 1fr; }
+            .card { max-width: 100%; }
+            .foto { width: 70px; height: 70px; font-size: 1.4rem; }
+            .nama { font-size: 0.9rem; }
+            .judul-utama {
+                font-size: 1rem;
+                white-space: nowrap;
+                overflow-x: auto;
+                max-width: 100%;
+                display: inline-block;
+                padding: 0 0.2rem;
+            }
+            .caption-rochman { 
+                white-space: nowrap; 
+                font-size: 0.65rem; 
+                overflow-x: auto;
+                max-width: 95%;
+                display: inline-block;
+                padding: 0.2rem 0.6rem;
+            }
+            .zoom-icon { width: 20px; height: 20px; font-size: 10px; bottom: -3px; right: -3px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="judul-utama">🎮 RESPONDEN KUISIONER 🎮</div>
+        <div class="caption-rochman">👾 progress anak bapak Rochman 👾</div>
+    </div>
+    <div class="log-panel">
+        <h3>📢 Log Aktivitas (7 hari terakhir)</h3>
+        <div id="logList">✨ Memuat log...</div>
+    </div>
+    <div class="legend">
+        <div class="legend-item"><span class="badge otw"></span> 🔵 OTW Sempro</div>
+        <div class="legend-item"><span class="badge just"></span> 🟢 Semprotulation</div>
+        <div class="legend-item"><span class="badge penelitian"></span> 🟡 Penelitian</div>
+        <div class="legend-item"><span class="badge skg"></span> 🔴 Semhastulation</div>
+    </div>
+    <div class="grid-team" id="timGrid"></div>
+    <div class="footer">
+        ✨ Klik FOTO untuk ucapan selamat & edit (SKG) ✨<br>
+        🔍 Klik ikon kaca pembesar untuk melihat foto besar saja<br>
+        🔐 Password update progress: <strong>bapakrochman</strong><br>
+        📅 Log otomatis terhapus setelah 7 hari<br>
+        📷 Klik username untuk membuka Instagram
+    </div>
+</div>
+
+<!-- Modal ucapan biasa (non-SKG) - tanpa foto -->
+<div id="simpleModal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 id="simpleTitle">🎉 WAHAY! 🎉</h2>
+        <div id="simpleText"></div>
+        <button onclick="closeSimpleModal()">Tutup</button>
+    </div>
+</div>
+
+<!-- Modal khusus SKG (edit) - tanpa foto profil besar -->
+<div id="skgModal" class="modal-overlay">
+    <div class="modal-content skg-modal-content">
+        <div class="skg-foto-area">
+            <div id="skgFotoPerayaan" class="skg-foto-perayaan"></div>
+            <input type="text" id="skgUrlInput" class="skg-url-input" placeholder="URL foto perayaan (opsional)">
+            <button id="skgSimpanFotoBtn" class="skg-simpan-btn">Simpan Foto</button>
+        </div>
+        <div class="skg-kata-area">
+            <div class="skg-kata-label">📝 Kata-kata hari ini</div>
+            <textarea id="skgKataTextarea" class="skg-kata-textarea" rows="3" maxlength="100" placeholder="Tulis kata-kata motivasi... (maks 100 karakter)"></textarea>
+            <div class="char-counter"><span id="skgCharCount">0</span> / 100</div>
+            <button id="skgSimpanKataBtn" class="skg-simpan-btn">Simpan Kata</button>
+            <button id="skgTutupModalBtn" class="close-modal-btn">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal foto saja (untuk ikon zoom) -->
+<div id="fotoOnlyModal" class="modal-overlay">
+    <div class="modal-content foto-only-modal">
+        <img id="fotoOnlyImg" src="" alt="Foto Profil" style="max-width: 90vw; max-height: 90vh; border-radius: 20px; border: 4px solid #ffb703;">
+        <button onclick="closeFotoOnlyModal()" style="margin-top: 1rem; background: #f4a261; border: none; padding: 6px 16px; border-radius: 40px; cursor: pointer;">Tutup</button>
+    </div>
+</div>
+
+<script>
+    // ========== FIREBASE CONFIG (GANTI DENGAN PUNYA ANDA) ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyDPjr14d8fKXFYLSwmOEGlEGhbT35fPs_Q",
+        authDomain: "banner-semhas.firebaseapp.com",
+        projectId: "banner-semhas",
+        storageBucket: "banner-semhas.firebasestorage.app",
+        messagingSenderId: "1018429010713",
+        appId: "1:1018429010713:web:62a8704fad3328ff63cb88",
+        measurementId: "G-DX7P7DXN6E"
+    };
+    // ================================================================
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let membersData = [];
+    let originalOrder = [];
+    let currentSkgIndex = null;
+    let unsubscribeMembers = null;
+    let unsubscribeLogs = null;
+
+    function isMobile() {
+        return window.innerWidth < 768;
+    }
+
+    function getFotoProfilUrl(namaAsli) {
+        let fotoFile = null;
+        if (namaAsli === "Cpng") fotoFile = "fotocpng.jpeg";
+        else if (namaAsli === "Fiya") fotoFile = "fotofiya.jpeg";
+        else if (namaAsli === "Upan") fotoFile = "fotoupan.jpeg";
+        else if (namaAsli === "depent") fotoFile = "fotoyanuar.jpeg";
+        else if (namaAsli === "parot") fotoFile = "fotofaro.jpeg";
+        else if (namaAsli === "Farrah") fotoFile = "farrahfoto.jpeg";
+        else if (namaAsli === "ustadz") fotoFile = "haniffoto.jpeg";
+        else if (namaAsli === "Adel") fotoFile = "fotoadel.jpeg";
+        else if (namaAsli === "Rara") fotoFile = "fotorara.jpeg";
+        else return null;
+        return `fotocard/${fotoFile}`;
+    }
+
+    function showFotoOnly(namaAsli) {
+        let fotoUrl = getFotoProfilUrl(namaAsli);
+        if (fotoUrl) {
+            document.getElementById("fotoOnlyImg").src = fotoUrl;
+            document.getElementById("fotoOnlyModal").classList.add("show");
+        } else {
+            alert("Foto tidak tersedia.");
+        }
+    }
+    function closeFotoOnlyModal() {
+        document.getElementById("fotoOnlyModal").classList.remove("show");
+    }
+
+    const stepOrder = ["OTW Sempro", "Just Sempro", "Penelitian", "SKG"];
+    function getNextStatus(s) {
+        let idx = stepOrder.indexOf(s);
+        return (idx === -1 || idx === stepOrder.length-1) ? null : stepOrder[idx+1];
+    }
+    function getStatusDetail(s) {
+        if (s === "OTW Sempro") return { persen:25, badge:"otw", text:"🔵 OTW SEMPRO", color:"#3b82f6" };
+        if (s === "Just Sempro") return { persen:50, badge:"just", text:"🟢 Semprotulation", color:"#10b981" };
+        if (s === "Penelitian") return { persen:75, badge:"penelitian", text:"🟡 PENELITIAN", color:"#f59e0b" };
+        if (s === "SKG") return { persen:100, badge:"skg", text:"🔴 Semhastulation", color:"#ef4444" };
+        return { persen:0, badge:"otw", text:"???", color:"#aaa" };
+    }
+    function getTodayDate() {
+        return new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+    }
+    function parseIndonesianDate(str) {
+        const months = { Januari:0, Februari:1, Maret:2, April:3, Mei:4, Juni:5, Juli:6, Agustus:7, September:8, Oktober:9, November:10, Desember:11 };
+        let parts = str.split(' ');
+        if (parts.length !== 3) return new Date(0);
+        let day = parseInt(parts[0]);
+        let month = months[parts[1]];
+        let year = parseInt(parts[2]);
+        return (isNaN(day) || month===undefined || isNaN(year)) ? new Date(0) : new Date(year, month, day);
+    }
+
+    function sortMembersByDate(members) {
+        const skg = members.filter(m => m.status === "SKG" && m.tanggalSkg);
+        const nonSkg = members.filter(m => m.status !== "SKG" || !m.tanggalSkg);
+        skg.sort((a,b) => parseIndonesianDate(a.tanggalSkg) - parseIndonesianDate(b.tanggalSkg));
+        if (originalOrder.length === 0) originalOrder = nonSkg.map(m => m.nama);
+        nonSkg.sort((a,b) => originalOrder.indexOf(a.nama) - originalOrder.indexOf(b.nama));
+        return [...skg, ...nonSkg];
+    }
+
+    async function cleanOldLogs() {
+        let sevenDays = new Date(); sevenDays.setDate(sevenDays.getDate()-7);
+        let old = await db.collection("activityLogs").where("timestamp", "<", firebase.firestore.Timestamp.fromDate(sevenDays)).get();
+        if (old.empty) return;
+        let batch = db.batch();
+        old.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+    async function addActivityLog(nama, oldStat, newStat) {
+        let waktu = new Date().toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' });
+        let pesan = (newStat === "SKG") 
+            ? `🎉 Selamat! ${getDisplayName(nama)} mencapai S.Kg pada ${waktu}! 🎉`
+            : `📈 ${getDisplayName(nama)} naik dari ${oldStat} ke ${newStat} (${waktu}). Semangat terus!`;
+        await db.collection("activityLogs").add({ pesan, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        await cleanOldLogs();
+    }
+    function setupLogs() {
+        let sevenDays = new Date(); sevenDays.setDate(sevenDays.getDate()-7);
+        unsubscribeLogs = db.collection("activityLogs")
+            .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(sevenDays))
+            .orderBy("timestamp", "desc").limit(12)
+            .onSnapshot(snap => {
+                let container = document.getElementById("logList");
+                if (snap.empty) {
+                    container.innerHTML = '<div class="empty-log">✨ Belum ada aktivitas dalam 7 hari. ✨</div>';
+                    return;
+                }
+                let html = "";
+                snap.forEach(doc => { html += `<div class="log-item">${doc.data().pesan}</div>`; });
+                container.innerHTML = html;
+            });
+    }
+
+    const renameMap = {
+        "Cpng": "Rafly Ardiyanshah",
+        "Rara": "Aulia Citra Utami",
+        "Upan": "Muhammad Luthfan Antalsa As Shidqi",
+        "depent": "Yanuar Devent Findaryanto",
+        "ustadz": "Hanif Eka Putra",
+        "parot": "Ramyro Alfaridzqi Danuputra",
+        "Fiya": "Nuur Lutfiyah Hasanah",
+        "Farrah": "Farra Nurdheana Putri",
+        "Adel": "Adella Zahra Maharani"
+    };
+    function getDisplayName(originalName) {
+        return renameMap[originalName] || originalName;
+    }
+
+    function showSimpleModal(namaAsli, status) {
+        let nama = getDisplayName(namaAsli);
+        let title = document.getElementById("simpleTitle");
+        let textDiv = document.getElementById("simpleText");
+        if (status === "Just Sempro") {
+            title.innerHTML = "🎊 SEMPROTULATION! 🎊";
+            textDiv.innerHTML = `<p><strong>${nama.toUpperCase()}!</strong></p>
+                <p>Selamat, sidang proposal BERHASIL! 🎉</p>
+                <p>Sekarang tinggal revisi dikit, lalu gaskeun penelitian.</p>
+                <p>Semangat menuju S.Kg! 💪</p>`;
+        } else if (status === "Penelitian") {
+            title.innerHTML = "🔬 TERUS SEMANGAT! 🔬";
+            textDiv.innerHTML = `<p><strong>${nama}</strong>, kamu sudah di tahap penelitian!</p>
+                <p>Jangan lupa olah data, rajin bimbingan, dan jaga kesehatan.</p>
+                <p>Setiap hari adalah langkah kecil menuju S.Kg! 🚀</p>
+                <p>Kamu pasti bisa! 💯</p>`;
+        } else {
+            title.innerHTML = "🚀 GASKEUN SEMPRO! 🚀";
+            textDiv.innerHTML = `<p><strong>${nama}</strong>, waktunya persiapan seminar proposal!</p>
+                <p>Kumpulkan referensi, konsultasi dengan dosen, dan latihan presentasi.</p>
+                <p>Kamu akan melewati tahap ini dengan baik. Ayo semangat! 💪🎓</p>`;
+        }
+        document.getElementById("simpleModal").classList.add("show");
+    }
+    function closeSimpleModal() { document.getElementById("simpleModal").classList.remove("show"); }
+
+    function openSkgModal(index) {
+        if (isMobile()) {
+            alert("⚠️ Perubahan hanya dapat dilakukan pada tampilan desktop. Mohon gunakan laptop atau PC untuk mengedit ucapan selamat dan foto perayaan.");
+            return;
+        }
+        currentSkgIndex = index;
+        let member = membersData[index];
+        let fotoUrl = member.fotoPerayaanUrl || "";
+        let fotoDiv = document.getElementById("skgFotoPerayaan");
+        if (fotoUrl) {
+            fotoDiv.style.backgroundImage = `url('${fotoUrl}')`;
+            fotoDiv.style.backgroundSize = "cover";
+        } else {
+            fotoDiv.style.backgroundImage = "none";
+            fotoDiv.style.backgroundColor = "#e7cda8";
+        }
+        document.getElementById("skgUrlInput").value = fotoUrl;
+        let kata = member.kataKata || "";
+        let textarea = document.getElementById("skgKataTextarea");
+        textarea.value = kata;
+        document.getElementById("skgCharCount").innerText = kata.length;
+        document.getElementById("skgModal").classList.add("show");
+    }
+    function closeSkgModal() { document.getElementById("skgModal").classList.remove("show"); currentSkgIndex = null; }
+    async function simpanFoto() {
+        if (currentSkgIndex === null) return;
+        let pwd = prompt("Masukkan password untuk mengubah foto perayaan:");
+        if (pwd !== "bapakrochman") { if(pwd !== null) alert("❌ Password salah!"); return; }
+        let newUrl = document.getElementById("skgUrlInput").value.trim();
+        let newData = [...membersData];
+        newData[currentSkgIndex].fotoPerayaanUrl = newUrl === "" ? null : newUrl;
+        await db.collection("skripsiProgress").doc("members").update({ data: newData });
+        alert("✅ Foto perayaan diperbarui!");
+        let fotoDiv = document.getElementById("skgFotoPerayaan");
+        if (newUrl) {
+            fotoDiv.style.backgroundImage = `url('${newUrl}')`;
+            fotoDiv.style.backgroundSize = "cover";
+        } else {
+            fotoDiv.style.backgroundImage = "none";
+            fotoDiv.style.backgroundColor = "#e7cda8";
+        }
+    }
+    async function simpanKata() {
+        if (currentSkgIndex === null) return;
+        if (isMobile()) {
+            alert("Maaf, edit kata-kata hanya bisa dilakukan di laptop/desktop. Silakan buka website ini di komputer.");
+            return;
+        }
+        let pwd = prompt("Masukkan password untuk mengedit kata-kata hari ini:");
+        if (pwd !== "bapakrochman") { if(pwd !== null) alert("❌ Password salah!"); return; }
+        let newKata = document.getElementById("skgKataTextarea").value.trim();
+        if (newKata.length > 100) { alert("❌ Maksimal 100 karakter!"); return; }
+        let newData = [...membersData];
+        newData[currentSkgIndex].kataKata = newKata === "" ? null : newKata;
+        await db.collection("skripsiProgress").doc("members").update({ data: newData });
+        alert("✅ Kata-kata hari ini disimpan!");
+        document.getElementById("skgCharCount").innerText = newKata.length;
+    }
+
+    function typewriter(el, newText) {
+        let old = el.innerText;
+        if (old === newText) return;
+        let i = old.length;
+        function erase() {
+            if (i >= 0) { el.innerText = old.substring(0,i); i--; setTimeout(erase,40); }
+            else {
+                let j = 0;
+                function write() {
+                    if (j <= newText.length) { el.innerText = newText.substring(0,j); j++; setTimeout(write,80); }
+                }
+                write();
+            }
+        }
+        erase();
+    }
+    function startTypewriter() {
+        setTimeout(() => {
+            document.querySelectorAll('.nama').forEach(el => {
+                let originalName = el.innerText;
+                if (renameMap[originalName]) {
+                    typewriter(el, renameMap[originalName]);
+                }
+            });
+        }, 4000);
+    }
+
+    function renderCards() {
+        let grid = document.getElementById("timGrid");
+        if (!grid) return;
+        let sorted = sortMembersByDate(membersData);
+        grid.innerHTML = "";
+        sorted.forEach(m => {
+            let detail = getStatusDetail(m.status);
+            let isSkg = (m.status === "SKG");
+            let fotoFile = null;
+            if (m.nama === "Cpng") fotoFile = "fotocpng.jpeg";
+            else if (m.nama === "Fiya") fotoFile = "fotofiya.jpeg";
+            else if (m.nama === "Upan") fotoFile = "fotoupan.jpeg";
+            else if (m.nama === "depent") fotoFile = "fotoyanuar.jpeg";
+            else if (m.nama === "parot") fotoFile = "fotofaro.jpeg";
+            else if (m.nama === "Farrah") fotoFile = "farrahfoto.jpeg";
+            else if (m.nama === "ustadz") fotoFile = "haniffoto.jpeg";
+            else if (m.nama === "Adel") fotoFile = "fotoadel.jpeg";
+            else if (m.nama === "Rara") fotoFile = "fotorara.jpeg";
+
+            let fotoHtml = '';
+            let fotoUrlFull = fotoFile ? `fotocard/${fotoFile}` : null;
+            let fotoStyle = fotoUrlFull ? `background-image: url('${fotoUrlFull}'); background-size: cover; background-position: center;` : '';
+            fotoHtml = `<div style="position: relative; width: fit-content; margin: 0 auto;">
+                            <div class="foto" style="${fotoStyle}" onclick="handleFotoClick('${m.nama}', '${m.status}', ${membersData.findIndex(orig => orig.nama === m.nama)})">
+                                ${!fotoFile ? `<span>${m.fotoInitial ? m.fotoInitial.substring(0,2).toUpperCase() : "??"}</span>` : '<span style="opacity:0;">.</span>'}
+                            </div>
+                            <div class="zoom-icon" onclick="event.stopPropagation(); showFotoOnly('${m.nama}');">🔍</div>
+                        </div>`;
+
+            let tanggalHtml = (isSkg && m.tanggalSkg) ? `<div class="tanggal-skg">📅 sidang: ${m.tanggalSkg}</div>` : (isSkg ? `<div class="tanggal-skg">✨ Semhastulation ✨</div>` : "");
+            let igHtml = '';
+            if (m.instagramUrl && m.instagramUser) {
+                igHtml = `<div class="instagram-area">
+                            📷 <a href="${m.instagramUrl}" target="_blank" class="instagram-link">${m.instagramUser}</a>
+                          </div>`;
+            } else {
+                igHtml = `<div class="instagram-area">
+                            📷 <span class="instagram-link" style="color:#ab8a5c;">Instagram tidak tersedia</span>
+                          </div>`;
+            }
+
+            let next = getNextStatus(m.status);
+            let btnHtml = next ? `<button class="btn-update" data-idx="${membersData.findIndex(orig => orig.nama === m.nama)}">🔓 Lanjut ke ${next === "Just Sempro" ? "Semprotulation" : (next === "SKG" ? "S.Kg" : next)}</button>` : `<button class="btn-update" disabled style="opacity:0.5;">🏆 S.Kg</button>`;
+
+            let card = document.createElement("div");
+            card.className = "card";
+            if (isSkg) card.setAttribute("data-status", "SKG");
+            card.innerHTML = `
+                ${fotoHtml}
+                <div class="nama">${m.nama}</div>
+                <div class="angkatan">Angkatan ${m.angkatan}</div>
+                <div class="status-badge ${detail.badge}">${detail.text}</div>
+                <div class="progress-bar-bg"><div class="progress-fill" style="width: ${detail.persen}%; background: ${detail.color};"></div></div>
+                <div class="persen">${detail.persen}% selesai</div>
+                ${tanggalHtml}
+                ${igHtml}
+                ${btnHtml}
+            `;
+            grid.appendChild(card);
+        });
+
+        document.querySelectorAll(".btn-update[data-idx]").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                let idx = parseInt(btn.getAttribute("data-idx"));
+                let pwd = prompt("Masukkan password untuk update progress (permanen!):");
+                if (pwd !== "bapakrochman") { if(pwd !== null) alert("❌ Password salah!"); return; }
+                let cur = membersData[idx].status;
+                let nxt = getNextStatus(cur);
+                if (!nxt) { alert("⚠️ Sudah S.Kg, tidak bisa naik lagi."); return; }
+                let newData = [...membersData];
+                let oldStat = newData[idx].status;
+                newData[idx].status = nxt;
+                if (nxt === "SKG") {
+                    if (!newData[idx].tanggalSkg) newData[idx].tanggalSkg = getTodayDate();
+                    if (newData[idx].fotoPerayaanUrl === undefined) newData[idx].fotoPerayaanUrl = null;
+                    if (newData[idx].kataKata === undefined) newData[idx].kataKata = null;
+                }
+                await db.collection("skripsiProgress").doc("members").update({ data: newData });
+                await addActivityLog(membersData[idx].nama, oldStat, nxt);
+                let displayName = getDisplayName(membersData[idx].nama);
+                alert(`✅ ${displayName} naik ke ${nxt === "Just Sempro" ? "Semprotulation" : (nxt === "SKG" ? "S.Kg" : nxt)}!`);
+            });
+        });
+    }
+
+    window.handleFotoClick = function(namaAsli, status, idx) {
+        if (status === "SKG") {
+            openSkgModal(idx);
+        } else {
+            showSimpleModal(namaAsli, status);
+        }
+    };
+    window.showFotoOnly = showFotoOnly;
+    window.closeFotoOnlyModal = closeFotoOnlyModal;
+
+    function initFirestore() {
+        let docRef = db.collection("skripsiProgress").doc("members");
+        unsubscribeMembers = docRef.onSnapshot(doc => {
+            if (doc.exists) {
+                membersData = doc.data().data;
+                for (let i=0; i<membersData.length; i++) {
+                    if (membersData[i].status === "SKG") {
+                        if (membersData[i].fotoPerayaanUrl === undefined) membersData[i].fotoPerayaanUrl = null;
+                        if (membersData[i].kataKata === undefined) membersData[i].kataKata = null;
+                    }
+                    if (membersData[i].instagramUrl === undefined) membersData[i].instagramUrl = null;
+                    if (membersData[i].instagramUser === undefined) membersData[i].instagramUser = null;
+                }
+                if (originalOrder.length === 0) {
+                    let nonSkg = membersData.filter(m => m.status !== "SKG" || !m.tanggalSkg);
+                    originalOrder = nonSkg.map(m => m.nama);
+                }
+                renderCards();
+            } else {
+                let defaultMembers = [
+                    { nama: "Fiya", angkatan: "2022", status: "SKG", fotoInitial: "FY", tanggalSkg: "4 Februari 2026", fotoPerayaanUrl: null, kataKata: "Alhamdulillah S.Kg! 🎉", instagramUrl: "https://www.instagram.com/fiyahasanah", instagramUser: "@fiyahasanah" },
+                    { nama: "Cpng", angkatan: "2023", status: "SKG", fotoInitial: "CP", tanggalSkg: "13 Mei 2026", fotoPerayaanUrl: null, kataKata: "Terima kasih semua! 🙏", instagramUrl: "https://www.instagram.com/fly.ard", instagramUser: "@fly.ard" },
+                    { nama: "Rara", angkatan: "2023", status: "Penelitian", fotoInitial: "RR", instagramUrl: "https://www.instagram.com/aulctra", instagramUser: "@aulctra" },
+                    { nama: "depent", angkatan: "2021", status: "Penelitian", fotoInitial: "YN", instagramUrl: "https://www.instagram.com/deventyanuar", instagramUser: "@deventyanuar" },
+                    { nama: "Upan", angkatan: "2022", status: "Penelitian", fotoInitial: "UP", instagramUrl: "https://www.instagram.com/luthfanantls", instagramUser: "@luthfanantls" },
+                    { nama: "Adel", angkatan: "2023", status: "Just Sempro", fotoInitial: "AD", instagramUrl: "https://www.instagram.com/adellazahra_", instagramUser: "@adellazahra_" },
+                    { nama: "Farrah", angkatan: "2023", status: "Just Sempro", fotoInitial: "FR", instagramUrl: "https://www.instagram.com/farradheaa", instagramUser: "@farradheaa" },
+                    { nama: "ustadz", angkatan: "2022", status: "OTW Sempro", fotoInitial: "HN", instagramUrl: "https://www.instagram.com/hanif.ekp", instagramUser: "@hanif.ekp" },
+                    { nama: "parot", angkatan: "2023", status: "OTW Sempro", fotoInitial: "PR", instagramUrl: "https://www.instagram.com/namaku_faro", instagramUser: "@namaku_faro" }
+                ];
+                docRef.set({ data: defaultMembers }).then(() => {
+                    membersData = defaultMembers;
+                    let nonSkg = membersData.filter(m => m.status !== "SKG" || !m.tanggalSkg);
+                    originalOrder = nonSkg.map(m => m.nama);
+                    renderCards();
+                });
+            }
+        });
+        setupLogs();
+        cleanOldLogs();
+    }
+
+    window.addEventListener("beforeunload", () => {
+        if (unsubscribeMembers) unsubscribeMembers();
+        if (unsubscribeLogs) unsubscribeLogs();
+    });
+
+    document.getElementById("skgSimpanFotoBtn").addEventListener("click", simpanFoto);
+    document.getElementById("skgSimpanKataBtn").addEventListener("click", simpanKata);
+    document.getElementById("skgTutupModalBtn").addEventListener("click", closeSkgModal);
+    document.getElementById("skgKataTextarea").addEventListener("input", function() {
+        document.getElementById("skgCharCount").innerText = this.value.length;
+    });
+
+    window.closeSimpleModal = closeSimpleModal;
+    window.closeSkgModal = closeSkgModal;
+
+    initFirestore();
+    startTypewriter();
+</script>
+</body>
+</html>
